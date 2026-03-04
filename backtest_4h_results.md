@@ -1,5 +1,10 @@
 # 📊 Backtest Results: BTC/USDT (4h)
 
+## 🛠 Strategy Configuration
+- **Strategy:** Exponential Moving Average (EMA) Crossover
+- **Fast Period:** 10 candles
+- **Slow Period:** 50 candles
+
 ## 📈 Performance Summary
 | Metric | Value |
 | :--- | :--- |
@@ -7,9 +12,9 @@
 | **Timeframe** | 4h |
 | **Candles Tested** | 1000 |
 | **Starting Balance** | $1,000.00 |
-| **Final Balance** | $876.29 |
-| **Strategy Return** | -12.37% |
-| **Buy & Hold Return** | -37.14% |
+| **Final Balance** | $877.84 |
+| **Strategy Return** | -12.22% |
+| **Buy & Hold Return** | -37.03% |
 | **Total Trades** | 29 |
 
 ## 📜 Detailed Trade Record

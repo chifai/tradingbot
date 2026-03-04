@@ -67,6 +67,7 @@ def run_backtest(symbol='BTC/USDT', timeframe='4h', limit=1000):
 BACKTEST RESULTS
 Symbol:           {symbol}
 Timeframe:        {timeframe}
+Strategy:         EMA Crossover ({strategy.fast_ema}/{strategy.slow_ema})
 Candles:          {len(df)}
 Starting Balance: $1000.00
 Final Balance:    ${final_value:.2f}
@@ -81,6 +82,12 @@ Total Trades:     {len(trades)}
     filename = f"backtest_{timeframe}_results.md"
     with open(filename, 'w') as f:
         f.write(f"# 📊 Backtest Results: {symbol} ({timeframe})\n\n")
+        
+        f.write("## 🛠 Strategy Configuration\n")
+        f.write(f"- **Strategy:** Exponential Moving Average (EMA) Crossover\n")
+        f.write(f"- **Fast Period:** {strategy.fast_ema} candles\n")
+        f.write(f"- **Slow Period:** {strategy.slow_ema} candles\n\n")
+
         f.write("## 📈 Performance Summary\n")
         f.write("| Metric | Value |\n")
         f.write("| :--- | :--- |\n")
