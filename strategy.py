@@ -2,11 +2,12 @@ import pandas as pd
 import pandas_ta as ta
 
 class TradingStrategy:
-    def __init__(self, fast_ema=50, slow_ema=200, rsi_period=14, rsi_overbought=70):
+    def __init__(self, fast_ema=10, slow_ema=100, rsi_period=14, rsi_overbought=70, trailing_stop=0.05):
         self.fast_ema = fast_ema
         self.slow_ema = slow_ema
         self.rsi_period = rsi_period
         self.rsi_overbought = rsi_overbought
+        self.trailing_stop = trailing_stop
 
     def generate_signals(self, ohlcv_data):
         """Processes data and returns a signal: 'buy', 'sell', or 'hold'."""

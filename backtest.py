@@ -23,7 +23,7 @@ def run_backtest(symbol='BTC/USDT', timeframe='4h', limit=4500):
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     
     # 3. Apply Strategy Indicators
-    strategy = TradingStrategy(fast_ema=50, slow_ema=200, rsi_period=14, rsi_overbought=70)
+    strategy = TradingStrategy(fast_ema=10, slow_ema=100, trailing_stop=0.05)
     df['EMA_fast'] = ta.ema(df['close'], length=strategy.fast_ema)
     df['EMA_slow'] = ta.ema(df['close'], length=strategy.slow_ema)
     df['RSI'] = ta.rsi(df['close'], length=strategy.rsi_period)
@@ -31,6 +31,7 @@ def run_backtest(symbol='BTC/USDT', timeframe='4h', limit=4500):
     # 4. Simulate Trades
     balance = 1000.0
     position = 0.0
+    highest_price = 0.0
     trades = []
     
     # Filter to start exactly on July 1, 2024
@@ -41,39 +42,32 @@ def run_backtest(symbol='BTC/USDT', timeframe='4h', limit=4500):
         curr_row = df.iloc[i]
         price = curr_row['close']
         
-        # Skip until we reach the target start date
         if curr_row['timestamp'] < start_date:
             continue
             
-        # INITIAL ENTRY: First candle of the requested period
-        if len(trades) == 0 and balance > 0:
-            if curr_row['EMA_fast'] > curr_row['EMA_slow'] and curr_row['RSI'] < strategy.rsi_overbought:
-                position = balance / price
-                balance = 0
-                trades.append({'type': 'INITIAL BUY', 'price': price, 'time': str(curr_row['timestamp']), 'value': position * price})
-                print(f"INITIAL BUY at {price:.2f} | {curr_row['timestamp']} | RSI: {curr_row['RSI']:.2f}")
+        # SELL LOGIC (Check this first if we have a position)
+        if position > 0:
+            highest_price = max(highest_price, price)
+            stop_loss_price = highest_price * (1 - strategy.trailing_stop)
+            
+            # EXIT: Trailing Stop OR EMA Crossunder
+            if price < stop_loss_price or (prev_row['EMA_fast'] >= prev_row['EMA_slow'] and curr_row['EMA_fast'] < curr_row['EMA_slow']):
+                balance = position * price
+                position = 0
+                trades.append({'type': 'SELL', 'price': price, 'time': str(curr_row['timestamp']), 'value': balance})
+                print(f"SELL at {price:.2f} | {curr_row['timestamp']} | Value: ${balance:.2f}")
+                continue
 
-        # NORMAL SIGNALS
-        signal = 'hold'
-        # BUY: Fast EMA crosses above Slow EMA AND RSI < 70
-        if prev_row['EMA_fast'] <= prev_row['EMA_slow'] and curr_row['EMA_fast'] > curr_row['EMA_slow']:
-            if curr_row['RSI'] < strategy.rsi_overbought:
-                signal = 'buy'
-        # AGGRESSIVE SELL: Price closes BELOW the Slow EMA
-        elif curr_row['close'] < curr_row['EMA_slow']:
-            signal = 'sell'
-
-        if signal == 'buy' and balance > 0:
-            position = balance / price
-            balance = 0
-            trades.append({'type': 'BUY', 'price': price, 'time': str(curr_row['timestamp']), 'value': position * price})
-            print(f"BUY  at {price:.2f} | {curr_row['timestamp']} | RSI: {curr_row['RSI']:.2f}")
-
-        elif signal == 'sell' and position > 0:
-            balance = position * price
-            position = 0
-            trades.append({'type': 'SELL', 'price': price, 'time': str(curr_row['timestamp']), 'value': balance})
-            print(f"SELL at {price:.2f} | {curr_row['timestamp']} | RSI: {curr_row['RSI']:.2f}")
+        # BUY LOGIC
+        if position == 0 and balance > 0:
+            # Entry: Golden Cross + RSI Filter
+            if prev_row['EMA_fast'] <= prev_row['EMA_slow'] and curr_row['EMA_fast'] > curr_row['EMA_slow']:
+                if curr_row['RSI'] < strategy.rsi_overbought:
+                    position = balance / price
+                    balance = 0
+                    highest_price = price
+                    trades.append({'type': 'BUY', 'price': price, 'time': str(curr_row['timestamp']), 'value': position * price})
+                    print(f"BUY  at {price:.2f} | {curr_row['timestamp']} | RSI: {curr_row['RSI']:.2f}")
 
     # 5. Final Results
     last_price = df.iloc[-1]['close']
