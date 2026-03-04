@@ -77,15 +77,27 @@ Total Trades:     {len(trades)}
 """
     print(summary_text)
 
-    # 6. Save to File
-    filename = f"backtest_{timeframe}_results.txt"
+    # 6. Save to Markdown File
+    filename = f"backtest_{timeframe}_results.md"
     with open(filename, 'w') as f:
-        f.write(summary_text)
-        f.write("\nDETAILED TRADE RECORD:\n")
-        f.write(f"{'Type':<10} | {'Price':<12} | {'Time':<25} | {'Account Value':<15}\n")
-        f.write("-" * 70 + "\n")
+        f.write(f"# 📊 Backtest Results: {symbol} ({timeframe})\n\n")
+        f.write("## 📈 Performance Summary\n")
+        f.write("| Metric | Value |\n")
+        f.write("| :--- | :--- |\n")
+        f.write(f"| **Symbol** | {symbol} |\n")
+        f.write(f"| **Timeframe** | {timeframe} |\n")
+        f.write(f"| **Candles Tested** | {len(df)} |\n")
+        f.write(f"| **Starting Balance** | $1,000.00 |\n")
+        f.write(f"| **Final Balance** | ${final_value:,.2f} |\n")
+        f.write(f"| **Strategy Return** | {total_return:.2f}% |\n")
+        f.write(f"| **Buy & Hold Return** | {buy_hold_return:.2f}% |\n")
+        f.write(f"| **Total Trades** | {len(trades)} |\n\n")
+        
+        f.write("## 📜 Detailed Trade Record\n")
+        f.write("| Type | Price | Time | Account Value |\n")
+        f.write("| :--- | :--- | :--- | :--- |\n")
         for trade in trades:
-            f.write(f"{trade['type']:<10} | {trade['price']:<12.2f} | {trade['time']:<25} | ${trade['value']:<15.2f}\n")
+            f.write(f"| {trade['type']} | {trade['price']:,.2f} | {trade['time']} | ${trade['value']:,.2f} |\n")
     
     print(f"Results saved to {filename}")
 
