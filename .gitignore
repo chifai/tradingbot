@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Sensitive Information (API Keys)
+.env
+
+# MacOS files
+.DS_Store
+
+# Logs and Backtest Results
+*.log
+backtest_*_results.txt
+
+# Local IDE settings
+.vscode/
+.idea/
