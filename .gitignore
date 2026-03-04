@@ -16,7 +16,8 @@ env/
 
 # Logs and Backtest Results
 *.log
-backtest_*_results.txt
+backtest_*_results.md
+data/
 
 # Local IDE settings
 .vscode/

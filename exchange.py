@@ -22,10 +22,30 @@ class ExchangeManager:
         if self.dry_run:
             print(f"--- DRY RUN MODE ENABLED on {self.exchange_id.upper()} ---")
 
-    def fetch_ohlcv(self, symbol, timeframe='1h', limit=100):
-        """Fetches historical candlestick data."""
+    def fetch_ohlcv(self, symbol, timeframe='1h', limit=100, use_cache=True):
+        """Fetches historical candlestick data with optional caching."""
+        # Create a safe filename for the cache
+        cache_filename = f"data/{symbol.replace('/', '_')}_{timeframe}.csv"
+        
+        if use_cache and os.path.exists(cache_filename):
+            print(f"Loading {symbol} ({timeframe}) from cache...")
+            import pandas as pd
+            df = pd.read_csv(cache_filename)
+            # Convert DataFrame back to list of lists (CCXT format)
+            return df.values.tolist()
+
         try:
-            return self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            print(f"Fetching {symbol} ({timeframe}) from {self.exchange_id}...")
+            data = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            
+            # Save to cache
+            if use_cache and data:
+                import pandas as pd
+                df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+                df.to_csv(cache_filename, index=False)
+                print(f"Saved {len(data)} candles to {cache_filename}")
+                
+            return data
         except Exception as e:
             print(f"Error fetching OHLCV: {e}")
             return None

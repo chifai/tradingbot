@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def run_backtest(symbol='BTC/USDT', timeframe='4h', limit=1000):
+def run_backtest(symbol='BTC/USDT', timeframe='4h', limit=3000):
     print(f"--- Starting Backtest for {symbol} ({timeframe}) ---")
     
     # 1. Fetch Historical Data
@@ -23,9 +23,10 @@ def run_backtest(symbol='BTC/USDT', timeframe='4h', limit=1000):
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     
     # 3. Apply Strategy Indicators
-    strategy = TradingStrategy(fast_ema=10, slow_ema=50)
+    strategy = TradingStrategy(fast_ema=20, slow_ema=50, rsi_period=14, rsi_overbought=70)
     df['EMA_fast'] = ta.ema(df['close'], length=strategy.fast_ema)
     df['EMA_slow'] = ta.ema(df['close'], length=strategy.slow_ema)
+    df['RSI'] = ta.rsi(df['close'], length=strategy.rsi_period)
     
     # 4. Simulate Trades
     balance = 1000.0  # Starting with $1000
@@ -37,24 +38,30 @@ def run_backtest(symbol='BTC/USDT', timeframe='4h', limit=1000):
         curr_row = df.iloc[i]
         price = curr_row['close']
         
-        if pd.isna(prev_row['EMA_slow']) or pd.isna(curr_row['EMA_slow']):
+        # Check if indicators are ready
+        if pd.isna(prev_row['EMA_slow']) or pd.isna(curr_row['EMA_slow']) or pd.isna(curr_row['RSI']):
             continue
 
-        # Buy Signal
+        # Use strategy to generate signals
+        # Simulating the generate_signals logic manually for performance during backtest
+        signal = 'hold'
         if prev_row['EMA_fast'] <= prev_row['EMA_slow'] and curr_row['EMA_fast'] > curr_row['EMA_slow']:
-            if balance > 0:
-                position = balance / price
-                balance = 0
-                trades.append({'type': 'BUY', 'price': price, 'time': str(curr_row['timestamp']), 'balance': 0, 'value': position * price})
-                print(f"BUY  at {price:.2f} | {curr_row['timestamp']}")
-
-        # Sell Signal
+            if curr_row['RSI'] < strategy.rsi_overbought:
+                signal = 'buy'
         elif prev_row['EMA_fast'] >= prev_row['EMA_slow'] and curr_row['EMA_fast'] < curr_row['EMA_slow']:
-            if position > 0:
-                balance = position * price
-                position = 0
-                trades.append({'type': 'SELL', 'price': price, 'time': str(curr_row['timestamp']), 'balance': balance, 'value': balance})
-                print(f"SELL at {price:.2f} | {curr_row['timestamp']}")
+            signal = 'sell'
+
+        if signal == 'buy' and balance > 0:
+            position = balance / price
+            balance = 0
+            trades.append({'type': 'BUY', 'price': price, 'time': str(curr_row['timestamp']), 'value': position * price})
+            print(f"BUY  at {price:.2f} | {curr_row['timestamp']} | RSI: {curr_row['RSI']:.2f}")
+
+        elif signal == 'sell' and position > 0:
+            balance = position * price
+            position = 0
+            trades.append({'type': 'SELL', 'price': price, 'time': str(curr_row['timestamp']), 'value': balance})
+            print(f"SELL at {price:.2f} | {curr_row['timestamp']} | RSI: {curr_row['RSI']:.2f}")
 
     # 5. Final Results
     last_price = df.iloc[-1]['close']
@@ -67,7 +74,7 @@ def run_backtest(symbol='BTC/USDT', timeframe='4h', limit=1000):
 BACKTEST RESULTS
 Symbol:           {symbol}
 Timeframe:        {timeframe}
-Strategy:         EMA Crossover ({strategy.fast_ema}/{strategy.slow_ema})
+Strategy:         EMA ({strategy.fast_ema}/{strategy.slow_ema}) + RSI (<{strategy.rsi_overbought})
 Candles:          {len(df)}
 Starting Balance: $1000.00
 Final Balance:    ${final_value:.2f}
@@ -84,20 +91,18 @@ Total Trades:     {len(trades)}
         f.write(f"# 📊 Backtest Results: {symbol} ({timeframe})\n\n")
         
         f.write("## 🛠 Strategy Configuration\n")
-        f.write(f"- **Strategy:** Exponential Moving Average (EMA) Crossover\n")
-        f.write(f"- **Fast Period:** {strategy.fast_ema} candles\n")
-        f.write(f"- **Slow Period:** {strategy.slow_ema} candles\n\n")
+        f.write(f"- **Strategy:** EMA Crossover + RSI Filter\n")
+        f.write(f"- **EMA Fast:** {strategy.fast_ema} | **EMA Slow:** {strategy.slow_ema}\n")
+        f.write(f"- **RSI Period:** {strategy.rsi_period} | **Buy Threshold:** < {strategy.rsi_overbought}\n\n")
 
         f.write("## 📈 Performance Summary\n")
         f.write("| Metric | Value |\n")
         f.write("| :--- | :--- |\n")
         f.write(f"| **Symbol** | {symbol} |\n")
         f.write(f"| **Timeframe** | {timeframe} |\n")
-        f.write(f"| **Candles Tested** | {len(df)} |\n")
-        f.write(f"| **Starting Balance** | $1,000.00 |\n")
-        f.write(f"| **Final Balance** | ${final_value:,.2f} |\n")
-        f.write(f"| **Strategy Return** | {total_return:.2f}% |\n")
+        f.write(f"| **Strategy Return** | **{total_return:.2f}%** |\n")
         f.write(f"| **Buy & Hold Return** | {buy_hold_return:.2f}% |\n")
+        f.write(f"| **Final Balance** | ${final_value:,.2f} |\n")
         f.write(f"| **Total Trades** | {len(trades)} |\n\n")
         
         f.write("## 📜 Detailed Trade Record\n")
