@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def run_backtest(symbol='BTC/USDT', timeframe='4h', limit=3000):
+def run_backtest(symbol='BTC/USDT', timeframe='4h', limit=4500):
     print(f"--- Starting Backtest for {symbol} ({timeframe}) ---")
     
     # 1. Fetch Historical Data
@@ -23,32 +23,44 @@ def run_backtest(symbol='BTC/USDT', timeframe='4h', limit=3000):
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     
     # 3. Apply Strategy Indicators
-    strategy = TradingStrategy(fast_ema=20, slow_ema=50, rsi_period=14, rsi_overbought=70)
+    strategy = TradingStrategy(fast_ema=12, slow_ema=26, rsi_period=14, rsi_overbought=70)
     df['EMA_fast'] = ta.ema(df['close'], length=strategy.fast_ema)
     df['EMA_slow'] = ta.ema(df['close'], length=strategy.slow_ema)
     df['RSI'] = ta.rsi(df['close'], length=strategy.rsi_period)
     
     # 4. Simulate Trades
-    balance = 1000.0  # Starting with $1000
-    position = 0.0    # Amount of BTC held
+    balance = 1000.0
+    position = 0.0
     trades = []
+    
+    # Filter to start exactly on July 1, 2024
+    start_date = pd.Timestamp('2024-07-01')
     
     for i in range(1, len(df)):
         prev_row = df.iloc[i-1]
         curr_row = df.iloc[i]
         price = curr_row['close']
         
-        # Check if indicators are ready
-        if pd.isna(prev_row['EMA_slow']) or pd.isna(curr_row['EMA_slow']) or pd.isna(curr_row['RSI']):
+        # Skip until we reach the target start date
+        if curr_row['timestamp'] < start_date:
             continue
+            
+        # INITIAL ENTRY: First candle of the requested period
+        if len(trades) == 0 and balance > 0:
+            if curr_row['EMA_fast'] > curr_row['EMA_slow'] and curr_row['RSI'] < strategy.rsi_overbought:
+                position = balance / price
+                balance = 0
+                trades.append({'type': 'INITIAL BUY', 'price': price, 'time': str(curr_row['timestamp']), 'value': position * price})
+                print(f"INITIAL BUY at {price:.2f} | {curr_row['timestamp']} | RSI: {curr_row['RSI']:.2f}")
 
-        # Use strategy to generate signals
-        # Simulating the generate_signals logic manually for performance during backtest
+        # NORMAL SIGNALS
         signal = 'hold'
+        # BUY: Fast EMA crosses above Slow EMA AND RSI < 70
         if prev_row['EMA_fast'] <= prev_row['EMA_slow'] and curr_row['EMA_fast'] > curr_row['EMA_slow']:
             if curr_row['RSI'] < strategy.rsi_overbought:
                 signal = 'buy'
-        elif prev_row['EMA_fast'] >= prev_row['EMA_slow'] and curr_row['EMA_fast'] < curr_row['EMA_slow']:
+        # AGGRESSIVE SELL: Price closes BELOW the Slow EMA
+        elif curr_row['close'] < curr_row['EMA_slow']:
             signal = 'sell'
 
         if signal == 'buy' and balance > 0:
