@@ -23,7 +23,7 @@ def run_backtest(symbol='BTC/USDT', timeframe='4h', limit=4500):
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     
     # 3. Apply Strategy Indicators
-    strategy = TradingStrategy(fast_ema=12, slow_ema=26, rsi_period=14, rsi_overbought=70)
+    strategy = TradingStrategy(fast_ema=50, slow_ema=200, rsi_period=14, rsi_overbought=70)
     df['EMA_fast'] = ta.ema(df['close'], length=strategy.fast_ema)
     df['EMA_slow'] = ta.ema(df['close'], length=strategy.slow_ema)
     df['RSI'] = ta.rsi(df['close'], length=strategy.rsi_period)
