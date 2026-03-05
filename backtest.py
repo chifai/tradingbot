@@ -92,7 +92,8 @@ def run_backtest(strategy_id=1, symbol='BTC/USDT', timeframe='4h', limit=4500):
     balance, position, highest_price = 1000.0, 0.0, 0.0
     trades = []
     start_date = pd.Timestamp('2024-07-01')
-    
+    first_sim_index = -1
+
     # Select Strategy Function
     strat_func = strategy_ema_trailing if strategy_id == 1 else strategy_bollinger_bands
     strat_name = "EMA 10/100 + 5% Trailing Stop" if strategy_id == 1 else "Bollinger Bands Mean Reversion"
@@ -101,6 +102,23 @@ def run_backtest(strategy_id=1, symbol='BTC/USDT', timeframe='4h', limit=4500):
     for i in range(1, len(df)):
         if df.iloc[i]['timestamp'] < start_date or pd.isna(df.iloc[i]['EMA_slow']): continue
         
+        if first_sim_index == -1: first_sim_index = i
+
+        # INITIAL ENTRY: If this is the very first candle of simulation and we are already in trend
+        if i == first_sim_index and balance > 0:
+            curr = df.iloc[i]
+            is_bullish = False
+            if strategy_id == 1 and curr['EMA_fast'] > curr['EMA_slow'] and curr['RSI'] < strategy_obj.rsi_overbought:
+                is_bullish = True
+            elif strategy_id == 2 and curr['close'] < curr[[c for c in df.columns if c.startswith('BBL')][0]]:
+                is_bullish = True
+            
+            if is_bullish:
+                position = balance / curr['close']
+                balance, highest_price = 0, curr['close']
+                trades.append({'type': 'INITIAL BUY', 'price': curr['close'], 'time': str(curr['timestamp']), 'value': position * curr['close']})
+                continue
+
         signal, highest_price = strat_func(df, i, position, highest_price, strategy_obj)
         price = df.iloc[i]['close']
         
